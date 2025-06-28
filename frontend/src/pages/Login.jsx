@@ -1,132 +1,169 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"; // ✅ Correct import
+import { X, Eye, EyeOff, LogIn } from "lucide-react";
 
-const backgroundImage =
-  "https://www.heineken.com/media-eu/ql0lcs2n/heineken-logo.png?quality=85";
-const workfrontLogo =
-  "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRkY0QjAwIi8+CjxwYXRoIGQ9Ik0yMCAyMEg2MFY2MEgyMFYyMFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0zMCAzMEg1MFY1MEgzMFYzMFoiIGZpbGw9IiNGRjRCMDAiLz4KPC9zdmc+";
-
-export default function Login({ onLogin }) {
+export default function Login({ isOpen, onClose, onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate(); // ✅ Use the hook
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // const handleLogin = async (e) => {
-  //   if (e) e.preventDefault();
-  //   setError('');
-
-  //   try {
-  //     const response = await axios.post('http://localhost:5000/api/login', {
-  //       username,
-  //       password
-  //     });
-
-  //     if (response.status === 200 && response.data.sessionID) {
-  //       localStorage.setItem('sessionID', response.data.sessionID);
-  //       console.log("Session ID stored:", response.data.sessionID);
-
-  //       if (onLogin) onLogin(); // Optional callback
-  //       navigate('/'); // ✅ Correct navigation
-  //       window.location.reload(); // Optional: force refresh to re-render header
-  //     } else {
-  //       setError('Login failed.');
-  //     }
-  //   } catch (err) {
-  //     console.error("Login error:", err);
-  //     if (err.response && err.response.status === 401) {
-  //       setError('Invalid username or password');
-  //     } else {
-  //       setError('Network error. Please try again.');
-  //     }
-  //   }
-  // };
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
-    // ✅ Fake login, store sessionID
-    localStorage.setItem("sessionID", "fake-session-id");
+    try {
+      const response = await axios.post("http://localhost:5000/api/login", {
+      username,
+      password,
+    }, {
+      withCredentials: true, // Important for cookies - equivalent to credentials: 'include'
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000 // 10 second timeout
+    });
 
-    // Navigate to home and reload to re-render header
-    navigate("/");
-    window.location.reload();
+      if (response.status === 200 && response.data.sessionID) {
+        // Store sessionID in localStorage with consistent key
+        localStorage.setItem("sessionId", response.data.sessionID);
+        console.log('Login response:', response.data);
+console.log('SessionID from response:', response.data.sessionID);
+        
+        // Call the onLogin callback to update Header state
+        if (onLogin) {
+          onLogin(response.data.sessionID);
+        }
+        
+        // Clear form
+        setUsername("");
+        setPassword("");
+        
+        // Close modal
+        onClose();
+        
+      } else {
+        setError("Login failed.");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      if (err.response && err.response.status === 401) {
+        setError("Invalid username or password");
+      } else {
+        setError("Network error. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+
+  if (!isOpen) return null;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#6de03d] via-[#007A33] to-[#007A33] px-4 py-10">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-xl p-8 text-white space-y-6">
-        {/* Heineken Logo */}
-        <div className="flex justify-center">
-          <img
-            src={backgroundImage}
-            alt="Heineken Logo"
-            className="h-20 object-contain"
-          />
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700/50 overflow-hidden">
+        {/* Header */}
+        <div className="relative bg-gradient-to-r from-emerald-600 to-emerald-500 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <LogIn className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors duration-200"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+          <p className="text-emerald-100 mt-2">Sign in to your Workfront account</p>
         </div>
 
         {/* Form */}
-        <form className="space-y-6" onSubmit={handleLogin}>
-          {/* Username Field */}
-          <div className="relative">
-            <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder=" "
-              className="w-full px-4 pt-5 pb-2 bg-white/10 text-white rounded-md outline-none peer placeholder-transparent"
-              required
-            />
-            <label
-              htmlFor="username"
-              className="absolute left-4 top-2 text-white text-sm peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:text-sm transition-all"
+        <div className="p-6">
+          <form onSubmit={handleLogin} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* Username Field */}
+            <div className="space-y-2">
+              <label htmlFor="username" className="text-sm font-medium text-slate-300">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
+                placeholder="Enter your username"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium text-slate-300">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 pr-12 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Enter your password"
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-slate-400 hover:text-slate-300 transition-colors duration-200"
+                  disabled={isLoading}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading || !username || !password}
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:from-slate-600 disabled:to-slate-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 disabled:cursor-not-allowed shadow-lg hover:shadow-emerald-500/25"
             >
-              Username
-            </label>
+              {isLoading ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Signing in...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center space-x-2">
+                  <LogIn className="w-5 h-5" />
+                  <span>Sign In</span>
+                </div>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6">
+          <div className="text-center text-sm text-slate-400">
+            Having trouble? Contact your system administrator
           </div>
-
-          {/* Password Field */}
-          <div className="relative">
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder=" "
-              className="w-full px-4 pt-5 pb-2 bg-white/10 text-white rounded-md outline-none peer placeholder-transparent"
-              required
-            />
-            <label
-              htmlFor="password"
-              className="absolute left-4 top-2 text-white text-sm peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:text-sm transition-all"
-            >
-              Password
-            </label>
-          </div>
-
-          {/* Error Message */}
-          {error && <p className="text-red-300 text-sm text-center">{error}</p>}
-
-          {/* Login Button */}
-          <button
-            type="submit"
-            className="w-full py-3 bg-white/30 hover:bg-white text-white hover:text-[#5d913d] font-semibold rounded transition duration-300"
-          >
-            Login
-          </button>
-        </form>
-
-        {/* Workfront Logo */}
-        <div className="flex flex-col items-center">
-          <img
-            src="image6.png" // Replace with the actual image path
-            alt="Adobe Workfront Logo"
-            className="h-10"
-          />
-          <p className="text-xl font-semibold font-sans mt-2">
-            Adobe Workfront
-          </p>
         </div>
       </div>
     </div>

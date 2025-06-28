@@ -28,62 +28,67 @@ export default function Projects() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    axios
-      .get('http://localhost:5000/api/project')
-      .then((res) => {
-        if (Array.isArray(res.data)) {
-          setProjects(res.data);
-        } else if (Array.isArray(res.data.data)) {
-          setProjects(res.data.data);
-        } else {
-          console.error('Unexpected response format', res.data);
-        }
-      })
-      .catch((err) => console.error('Error fetching projects:', err));
-  }, []);
-
-  const handleTaskSubmit = async () => {
-    if (!formData.title.trim()) {
-      alert('Please enter a task title');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const response = await axios.post('http://localhost:5000/api/task', {
-        title: formData.title,
-        description: formData.description,
-        projectId: selectedProjectId,
-        priority: formData.priority,
-        duration: formData.duration,
-        assignedTo: formData.assignedTo,
-        plannedStartDate: formData.plannedStartDate,
-        plannedCompletionDate: formData.plannedCompletionDate
-      });
-
-      if (response.data.success) {
-        alert(`Task created successfully! Task ID: ${response.data.taskID}`);
-        setFormData({ 
-          title: '', 
-          description: '', 
-          priority: '', 
-          severity: '', 
-          issueType: '', 
-          assignedTo: '', 
-          duration: '', 
-          plannedStartDate: '', 
-          plannedCompletionDate: '' 
-        });
-        setShowTaskForm(false);
+  axios
+    .get('http://localhost:5000/api/project', {
+      withCredentials: true // Add this to send cookies
+    })
+    .then((res) => {
+      if (Array.isArray(res.data)) {
+        setProjects(res.data);
+      } else if (Array.isArray(res.data.data)) {
+        setProjects(res.data.data);
       } else {
-        alert('Failed to create task: ' + (response.data.error || 'Unknown error'));
+        console.error('Unexpected response format', res.data);
       }
-    } catch (error) {
-      console.error('Error creating task:', error);
-      alert('Error creating task: ' + (error.response?.data?.error || error.message));
-    } finally {
-      setIsSubmitting(false);
+    })
+    .catch((err) => console.error('Error fetching projects:', err));
+}, []);
+
+const handleTaskSubmit = async () => {
+  if (!formData.title.trim()) {
+    alert('Please enter a task title');
+    return;
+  }
+
+  setIsSubmitting(true);
+  try {
+    const response = await axios.post('http://localhost:5000/api/task', {
+      title: formData.title,
+      description: formData.description,
+      projectId: selectedProjectId,
+      priority: formData.priority,
+      duration: formData.duration,
+      assignedTo: formData.assignedTo,
+      plannedStartDate: formData.plannedStartDate,
+      plannedCompletionDate: formData.plannedCompletionDate
+    }, {
+      withCredentials: true // Add this to send cookies
+    });
+
+    if (response.data.success) {
+      alert(`Task created successfully! Task ID: ${response.data.taskID}`);
+      setFormData({
+        title: '',
+        description: '',
+        priority: '',
+        severity: '',
+        issueType: '',
+        assignedTo: '',
+        duration: '',
+        plannedStartDate: '',
+        plannedCompletionDate: ''
+      });
+      setShowTaskForm(false);
+    } else {
+      alert('Failed to create task: ' + (response.data.error || 'Unknown error'));
     }
+  } catch (error) {
+    console.error('Error creating task:', error);
+    alert('Error creating task: ' + (error.response?.data?.error || error.message));
+  } finally {
+    setIsSubmitting(false);
+  }
+
   };
 
   const handleIssueSubmit = async () => {
