@@ -5,17 +5,28 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const router = express.Router();
-const WF_BASE_URL = 'https://vinsing.my.workfront.com/attask/api/v14.0';
-const API_KEY = process.env.WORKFRONT_API_KEY;
+const WF_BASE_URL = 'https://m105kazi27.testdrive.workfront.com/attask/api/v14.0';
 
 router.post('/', async (req, res) => {
-  const { title, description, projectId, priority, severity, issueType, assignedTo } = req.body;
+  const { title, description, projectId, priority, severity, assignedTo } = req.body;
+
+  // Get session ID from cookies
+  const sessionID = req.cookies.sessionID;
+  console.log('Issue creation - Received cookies:', req.cookies);
+  
+  if (!sessionID) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required',
+      message: 'No session ID found. Please login first.'
+    });
+  }
 
   // Validate required fields
   if (!title || !projectId) {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'Title and Project ID are required' 
+    return res.status(400).json({
+      success: false,
+      error: 'Title and Project ID are required'
     });
   }
 
@@ -48,48 +59,64 @@ router.post('/', async (req, res) => {
     };
 
     // Add issue type if provided
-    if (issueType) {
-      issueData.issueType = issueType;
-    }
+    
 
     // Add assigned user if provided
     if (assignedTo) {
       issueData.assignedToID = assignedTo;
     }
 
+    console.log('Issue creation - Using sessionID:', sessionID);
+    console.log('Issue creation - Issue data:', issueData);
+
     const response = await axios.post(
-      `${WF_BASE_URL}/issue`,
+      `${WF_BASE_URL}/issue?sessionID=${sessionID}`,
       issueData,
       {
         headers: {
-          'apiKey': API_KEY,
+          'Accept': 'application/json',
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 10000
       }
     );
 
     const issueID = response.data.data.ID;
     console.log("Issue created successfully:", { issueID, title, projectId });
-    
-    res.status(201).json({ 
-      success: true, 
+
+    res.status(201).json({
+      success: true,
       message: 'Issue created successfully',
       issueID: issueID
     });
 
   } catch (err) {
-    console.error('Workfront issue creation error:');
-    if (err.response) {
-      console.error('Status:', err.response.status);
-      console.error('Data:', err.response.data);
-    } else {
-      console.error(err.message);
-    }
-    
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to create issue in Workfront' 
+    console.error('Issue creation - Error details:', {
+      message: err.message,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      data: err.response?.data
     });
+
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      res.status(401).json({
+        success: false,
+        error: 'Authentication failed',
+        message: 'Your session is invalid or expired. Please login again.'
+      });
+    } else if (err.response?.status === 400) {
+      res.status(400).json({
+        success: false,
+        error: 'Bad request',
+        message: err.response?.data?.error?.message || err.response?.data?.message || 'Invalid request data'
+      });
+    } else {
+      res.status(err.response?.status || 500).json({
+        success: false,
+        error: 'Failed to create issue in Workfront',
+        message: err.response?.data?.error?.message || err.response?.data?.message || err.message
+      });
+    }
   }
 });
 

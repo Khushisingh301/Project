@@ -5,17 +5,26 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const router = express.Router();
-const WF_BASE_URL = 'https://vinsing.my.workfront.com/attask/api/v14.0';
-const API_KEY = process.env.WORKFRONT_API_KEY;
+const WF_BASE_URL = 'https://m105kazi27.testdrive.workfront.com/attask/api/v14.0';
 
 router.post('/', async (req, res) => {
   const { title, description, projectId, priority, duration, assignedTo, plannedStartDate, plannedCompletionDate } = req.body;
-
+  
+  // Get session ID from cookies
+  const sessionID = req.cookies.sessionID;
+  
+   if (!sessionID) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required',
+      message: 'No session ID found. Please login first.'
+    });
+  }
   // Validate required fields
   if (!title || !projectId) {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'Title and Project ID are required' 
+    return res.status(400).json({
+      success: false,
+      error: 'Title and Project ID are required'
     });
   }
 
@@ -34,7 +43,8 @@ router.post('/', async (req, res) => {
       description: description || '',
       projectID: projectId,
       status: 'NEW',
-      priority: wfPriority
+      priority: wfPriority,
+      sessionID: sessionID  // Add session ID to the request data
     };
 
     // Add duration if provided (in minutes)
@@ -62,17 +72,18 @@ router.post('/', async (req, res) => {
       taskData,
       {
         headers: {
-          'apiKey': API_KEY,
+          'Accept': 'application/json',
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 10000
       }
     );
 
     const taskID = response.data.data.ID;
     console.log("Task created successfully:", { taskID, title, projectId });
     
-    res.status(201).json({ 
-      success: true, 
+    res.status(201).json({
+      success: true,
       message: 'Task created successfully',
       taskID: taskID
     });
@@ -82,13 +93,21 @@ router.post('/', async (req, res) => {
     if (err.response) {
       console.error('Status:', err.response.status);
       console.error('Data:', err.response.data);
+      
+      // Handle specific Workfront errors
+      if (err.response.status === 401) {
+        return res.status(401).json({
+          success: false,
+          error: 'Session expired. Please login again.'
+        });
+      }
     } else {
       console.error(err.message);
     }
     
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to create task in Workfront' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create task in Workfront'
     });
   }
 });

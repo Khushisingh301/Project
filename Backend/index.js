@@ -1,39 +1,4 @@
-// import express from 'express';
-// import cors from 'cors';
-// import dotenv from 'dotenv';
-// import axios from 'axios';
-// import taskRoutes from './routes/task.js';
-// import issueRoutes from './routes/issue.js';
 
-// dotenv.config();
-// const app = express();
-// app.use(cors());
-// app.use(express.json());
-
-// const WF_BASE_URL = 'https://vinsing.my.workfront.com/attask/api/v14.0';
-// const API_KEY = process.env.WORKFRONT_API_KEY;
-
-// // Get all projects
-// app.get('/api/project', async (req, res) => {
-//   try {
-//     const response = await axios.get(`${WF_BASE_URL}/project/search?fields=ID,name,description`, {
-//       headers: {
-//         'apiKey': API_KEY
-//       }
-//     });
-//     res.json(response.data.data);
-//   } catch (err) {
-//     console.error('Error fetching projects:', err);
-//     res.status(500).json({ error: 'Failed to fetch projects' });
-//   }
-// });
-
-// // Use task and issue routes
-// app.use('/api/task', taskRoutes);
-// app.use('/api/issue', issueRoutes);
-
-// const PORT = process.env.PORT || 5000;
-// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 import express from 'express';
 import cors from 'cors';
@@ -182,7 +147,62 @@ app.post('/api/logout', async (req, res) => {
   }
 });
 
+
+// app.get('/api/portfolio', async (req, res) => {
+//   try {
+//     const sessionID = req.cookies.sessionID;
+//     console.log('Portfolio - Received cookies:', req.cookies);
+    
+//     if (!sessionID) {
+//       return res.status(401).json({ 
+//         error: 'Authentication required',
+//         message: 'No session ID found. Please login first.'
+//       });
+//     }
+    
+//     console.log('Portfolio - Using sessionID:', sessionID);
+    
+//     const response = await axios.get(
+//       `${WF_BASE_URL}/portfolio/search?sessionID=${sessionID}&fields=ID,name,description,isActive,portfolioManager,owner,enteredByID,entryDate,lastUpdateDate`,
+//       {
+//         headers: {
+//           'Accept': 'application/json'
+//         },
+//         timeout: 10000
+//       }
+//     );
+    
+//     console.log('Portfolio - Success! Response status:', response.status);
+//     console.log('Portfolio - Response data:', response.data);
+    
+//     // Handle different response structures and return portfolios directly
+//     const portfolios = response.data?.data || response.data;
+//     res.json(portfolios);
+    
+//   } catch (err) {
+//     console.error('Portfolio - Error fetching portfolios:', {
+//       message: err.message,
+//       status: err.response?.status,
+//       statusText: err.response?.statusText,
+//       data: err.response?.data
+//     });
+    
+//     if (err.response?.status === 401 || err.response?.status === 403) {
+//       res.status(401).json({
+//         error: 'Authentication failed',
+//         message: 'Your session is invalid or expired. Please login again.'
+//       });
+//     } else {
+//       res.status(err.response?.status || 500).json({
+//         error: 'Failed to fetch portfolios',
+//         message: err.response?.data?.error?.message || err.response?.data?.message || err.message
+//       });
+//     }
+//   }
+// });
+
 // Get all projects using sessionID from request header cookie
+// Use this as your main /api/project endpoint
 app.get('/api/project', async (req, res) => {
   try {
     const sessionID = req.cookies.sessionID;
@@ -197,69 +217,24 @@ app.get('/api/project', async (req, res) => {
     
     console.log('Using sessionID:', sessionID);
     
-    // Try both approaches: cookie and query parameter
-    const approaches = [
+    const response = await axios.get(
+      `${WF_BASE_URL}/project/search?sessionID=${sessionID}&fields=ID,name,description,status,percentComplete,plannedStartDate,plannedCompletionDate,programID`,
       {
-        name: 'Cookie Method',
-        config: {
-          url: `${WF_BASE_URL}/project/search?fields=ID,name,description,status,percentComplete,plannedStartDate,plannedCompletionDate,programID`,
-          headers: {
-            'Cookie': `sessionID=${sessionID}`,
-            'Accept': 'application/json'
-          }
-        }
-      },
-      {
-        name: 'Query Parameter Method',
-        config: {
-          url: `${WF_BASE_URL}/project/search?sessionID=${sessionID}&fields=ID,name,description,status,percentComplete,plannedStartDate,plannedCompletionDate,programID`,
-          headers: {
-            'Accept': 'application/json'
-          }
-        }
+        headers: {
+          'Accept': 'application/json'
+        },
+        timeout: 10000
       }
-    ];
+    );
     
-    let response;
-    let lastError;
+    console.log('Success! Response status:', response.status);
     
-    for (const approach of approaches) {
-      try {
-        console.log(`Trying ${approach.name}...`);
-        console.log('URL:', approach.config.url);
-        console.log('Headers:', approach.config.headers);
-        
-        response = await axios.get(approach.config.url, {
-          headers: approach.config.headers,
-          timeout: 10000
-        });
-        
-        console.log(`Success with ${approach.name}`);
-        console.log('Response status:', response.status);
-        console.log('Response data:', response.data);
-        break; // Success, exit loop
-        
-      } catch (err) {
-        console.log(`${approach.name} failed:`, {
-          status: err.response?.status,
-          message: err.response?.data?.error?.message || err.response?.data?.message || err.message,
-          data: err.response?.data
-        });
-        lastError = err;
-        continue; // Try next approach
-      }
-    }
-    
-    if (!response) {
-      throw lastError || new Error('All authentication methods failed');
-    }
-    
-    // Handle different response structures
+    // Handle different response structures and return projects directly
     const projects = response.data?.data || response.data;
     res.json(projects);
     
   } catch (err) {
-    console.error('Final error fetching projects:', {
+    console.error('Error fetching projects:', {
       message: err.message,
       status: err.response?.status,
       statusText: err.response?.statusText,
@@ -281,6 +256,199 @@ app.get('/api/project', async (req, res) => {
 });
 app.use('/api/task', taskRoutes);
 app.use('/api/issue', issueRoutes);
+
+//++++++++++++++++++++++++++++++++++++++
+
+app.get('/api/portfolio', async (req, res) => {
+  try {
+    const sessionID = req.cookies.sessionID;
+    console.log('Portfolios - Received cookies:', req.cookies);
+    
+    if (!sessionID) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'No session ID found. Please login first.'
+      });
+    }
+    
+    console.log('Portfolios - Using sessionID:', sessionID);
+    
+    const response = await axios.get(
+      `${WF_BASE_URL}/portfolio/search?sessionID=${sessionID}&fields=ID,name,description,isActive,owner,enteredByID,entryDate,lastUpdateDate`,
+      {
+        headers: {
+          'Accept': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+    
+    console.log('Portfolios - Success! Response status:', response.status);
+    
+    const portfolios = response.data?.data || response.data;
+    res.json(portfolios);
+    
+  } catch (err) {
+    console.error('Portfolios - Error fetching portfolios:', err);
+    
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      res.status(401).json({
+        error: 'Authentication failed',
+        message: 'Your session is invalid or expired. Please login again.'
+      });
+    } else {
+      res.status(err.response?.status || 500).json({
+        error: 'Failed to fetch portfolios',
+        message: err.response?.data?.error?.message || err.response?.data?.message || err.message
+      });
+    }
+  }
+});
+
+
+
+// Get projects by portfolio ID
+app.get('/api/portfolio/:portfolioId/projects', async (req, res) => {
+  try {
+    const sessionID = req.cookies.sessionID;
+    const { portfolioId } = req.params;
+    
+    if (!sessionID) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'No session ID found. Please login first.'
+      });
+    }
+    
+    console.log(`Portfolio Projects - Using sessionID: ${sessionID}, portfolioId: ${portfolioId}`);
+    
+    // Get projects that belong directly to this portfolio (not through a program)
+    const response = await axios.get(
+      `${WF_BASE_URL}/project/search?sessionID=${sessionID}&portfolioID=${portfolioId}&programID_Mod=isnull&fields=ID,name,description,status,percentComplete,plannedStartDate,plannedCompletionDate,programID,portfolioID`,
+      {
+        headers: {
+          'Accept': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+    
+    console.log('Portfolio Projects - Success! Response status:', response.status);
+    
+    const projects = response.data?.data || response.data;
+    res.json(projects);
+    
+  } catch (err) {
+    console.error('Portfolio Projects - Error fetching projects:', err);
+    
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      res.status(401).json({
+        error: 'Authentication failed',
+        message: 'Your session is invalid or expired. Please login again.'
+      });
+    } else {
+      res.status(err.response?.status || 500).json({
+        error: 'Failed to fetch portfolio projects',
+        message: err.response?.data?.error?.message || err.response?.data?.message || err.message
+      });
+    }
+  }
+});
+
+// Get programs by portfolio ID
+app.get('/api/portfolio/:portfolioId/programs', async (req, res) => {
+  try {
+    const sessionID = req.cookies.sessionID;
+    const { portfolioId } = req.params;
+    
+    if (!sessionID) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'No session ID found. Please login first.'
+      });
+    }
+    
+    console.log(`Portfolio Programs - Using sessionID: ${sessionID}, portfolioId: ${portfolioId}`);
+    
+    const response = await axios.get(
+      `${WF_BASE_URL}/program/search?sessionID=${sessionID}&portfolioID=${portfolioId}&fields=ID,name,description,portfolioID`,
+      {
+        headers: {
+          'Accept': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+    
+    console.log('Portfolio Programs - Success! Response status:', response.status);
+    
+    const programs = response.data?.data || response.data;
+    res.json(programs);
+    
+  } catch (err) {
+    console.error('Portfolio Programs - Error fetching programs:', err);
+    
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      res.status(401).json({
+        error: 'Authentication failed',
+        message: 'Your session is invalid or expired. Please login again.'
+      });
+    } else {
+      res.status(err.response?.status || 500).json({
+        error: 'Failed to fetch portfolio programs',
+        message: err.response?.data?.error?.message || err.response?.data?.message || err.message
+      });
+    }
+  }
+});
+
+// Get projects by program ID
+app.get('/api/program/:programId/projects', async (req, res) => {
+  try {
+    const sessionID = req.cookies.sessionID;
+    const { programId } = req.params;
+    
+    if (!sessionID) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'No session ID found. Please login first.'
+      });
+    }
+    
+    console.log(`Program Projects - Using sessionID: ${sessionID}, programId: ${programId}`);
+    
+    const response = await axios.get(
+      `${WF_BASE_URL}/project/search?sessionID=${sessionID}&programID=${programId}&fields=ID,name,description,status,percentComplete,plannedStartDate,plannedCompletionDate,programID,portfolioID`,
+      {
+        headers: {
+          'Accept': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+    
+    console.log('Program Projects - Success! Response status:', response.status);
+    
+    const projects = response.data?.data || response.data;
+    res.json(projects);
+    
+  } catch (err) {
+    console.error('Program Projects - Error fetching projects:', err);
+    
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      res.status(401).json({
+        error: 'Authentication failed',
+        message: 'Your session is invalid or expired. Please login again.'
+      });
+    } else {
+      res.status(err.response?.status || 500).json({
+        error: 'Failed to fetch program projects',
+        message: err.response?.data?.error?.message || err.response?.data?.message || err.message
+      });
+    }
+  }
+});
+//+++++++++++++++++++++++++++++++
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
